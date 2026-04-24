@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import HomePage from "./pages/HomePage";
-import InputPage from "./pages/InputPage";
 import DashboardPage from "./pages/DashboardPage";
+import AuthPage from "./pages/AuthPage";
+import ProfileSetupPage from "./pages/ProfileSetupPage";
+import GoalsPage from "./pages/GoalsPage";
+import ProfilePage from "./pages/ProfilePage";
 
 function App() {
-  const [userInput, setUserInput] = useState({
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
+  const [userAccount, setUserAccount] = useState({
+    email: "",
+  });
+  const [userProfile, setUserProfile] = useState({
     weight: "",
     height: "",
     sleepQuality: "",
@@ -14,6 +21,7 @@ function App() {
     proteinIntake: "",
     workoutIntensity: "",
   });
+  const [fitnessGoal, setFitnessGoal] = useState("");
 
   const [recommendation, setRecommendation] = useState({
     calories: 2200,
@@ -25,21 +33,81 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Navbar />
+      <Navbar
+        isAuthenticated={isAuthenticated}
+        setupComplete={setupComplete}
+        onSignOut={() => {
+          setIsAuthenticated(false);
+          setSetupComplete(false);
+          setFitnessGoal("");
+        }}
+      />
       <main className="page-container">
         <Routes>
-          <Route path="/" element={<HomePage />} />
           <Route
-            path="/input"
+            path="/"
             element={
-              <InputPage
-                userInput={userInput}
-                setUserInput={setUserInput}
-                setRecommendation={setRecommendation}
-              />
+              isAuthenticated ? (
+                <Navigate to={setupComplete ? "/dashboard" : "/setup/profile"} replace />
+              ) : (
+                <AuthPage setIsAuthenticated={setIsAuthenticated} setUserAccount={setUserAccount} />
+              )
             }
           />
-          <Route path="/dashboard" element={<DashboardPage recommendation={recommendation} />} />
+          <Route
+            path="/setup/profile"
+            element={
+              isAuthenticated ? (
+                <ProfileSetupPage
+                  userProfile={userProfile}
+                  setUserProfile={setUserProfile}
+                  nextPath="/setup/goals"
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/setup/goals"
+            element={
+              isAuthenticated ? (
+                <GoalsPage
+                  userProfile={userProfile}
+                  fitnessGoal={fitnessGoal}
+                  setFitnessGoal={setFitnessGoal}
+                  setRecommendation={setRecommendation}
+                  setSetupComplete={setSetupComplete}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              isAuthenticated && setupComplete ? (
+                <DashboardPage
+                  recommendation={recommendation}
+                  fitnessGoal={fitnessGoal}
+                  email={userAccount.email}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              isAuthenticated && setupComplete ? (
+                <ProfilePage userProfile={userProfile} setUserProfile={setUserProfile} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

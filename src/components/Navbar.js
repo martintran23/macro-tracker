@@ -1,32 +1,38 @@
 import { NavLink } from "react-router-dom";
+import Button from "./Button";
 
-function Navbar() {
+function Navbar({ isAuthenticated, setupComplete, onSignOut }) {
   return (
     <header className="navbar">
       <div className="navbar-inner">
-        <NavLink to="/" className="brand">
+        <NavLink to={isAuthenticated && setupComplete ? "/dashboard" : "/"} className="brand">
           MacroTracker
         </NavLink>
-        <nav className="nav-links">
-          <NavLink
-            to="/"
-            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          >
-            Home
-          </NavLink>
-          <NavLink
-            to="/input"
-            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          >
-            Input
-          </NavLink>
-          <NavLink
-            to="/dashboard"
-            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          >
-            Dashboard
-          </NavLink>
-        </nav>
+        {isAuthenticated ? (
+          <nav className="nav-links">
+            {setupComplete ? (
+              <>
+                <NavLink
+                  to="/dashboard"
+                  className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+                >
+                  Dashboard
+                </NavLink>
+                <NavLink
+                  to="/profile"
+                  className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+                >
+                  Profile
+                </NavLink>
+              </>
+            ) : (
+              <span className="nav-status">Setup in progress</span>
+            )}
+            <Button variant="secondary" onClick={onSignOut}>
+              Sign Out
+            </Button>
+          </nav>
+        ) : null}
       </div>
     </header>
   );

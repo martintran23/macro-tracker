@@ -124,6 +124,15 @@ body {
   filter: brightness(0.95);
 }
 
+.btn-secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-secondary:hover {
+  background: #cbd5e1;
+}
+
 .btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
@@ -179,6 +188,79 @@ body {
   margin: 0;
   color: var(--danger);
   font-size: 0.9rem;
+}
+
+.auth-page .card {
+  max-width: 520px;
+  margin: 1.5rem auto 0;
+}
+
+.auth-header {
+  margin-bottom: 0.8rem;
+}
+
+.compact {
+  margin-top: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.auth-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #e2e8f0;
+  border-radius: 10px;
+  padding: 0.25rem;
+  margin-bottom: 0.9rem;
+}
+
+.toggle-btn {
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 0.55rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.toggle-btn.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
+}
+
+.auth-form .btn {
+  margin-top: 0.4rem;
+}
+
+.goal-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem;
+}
+
+.goal-option {
+  border: 1px solid #bfdbfe;
+  background: #f8fbff;
+  border-radius: 10px;
+  padding: 0.8rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.goal-option.active {
+  border-color: var(--primary);
+  background: #e0f2fe;
+  color: var(--primary-dark);
+}
+
+.nav-status {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 @media (max-width: 620px) {
