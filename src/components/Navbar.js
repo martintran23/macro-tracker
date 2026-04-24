@@ -6,7 +6,8 @@ function Navbar({ isAuthenticated, setupComplete, onSignOut }) {
     <header className="navbar">
       <div className="navbar-inner">
         <NavLink to={isAuthenticated && setupComplete ? "/dashboard" : "/"} className="brand">
-          MacroTracker
+          <span className="brand-name">MacroTracker</span>
+          <span className="brand-sub">Titan health · Cal State Fullerton</span>
         </NavLink>
         {isAuthenticated ? (
           <nav className="nav-links">

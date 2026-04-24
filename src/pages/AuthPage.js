@@ -17,9 +17,9 @@ function AuthPage({ setIsAuthenticated, setUserAccount }) {
     <div className="page auth-page">
       <Card>
         <div className="auth-header">
-          <h1 className="page-title">Welcome to MacroTracker</h1>
+          <h1 className="page-title">Welcome, Titan</h1>
           <p className="hero-text compact">
-            Build your personalized Bayesian nutrition and workout plan in a few steps.
+            Build your personalized Bayesian nutrition and workout plan—styled for the CSUF community.
           </p>
         </div>
 
