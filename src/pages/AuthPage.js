@@ -19,7 +19,7 @@ function AuthPage({ setIsAuthenticated, setUserAccount }) {
         <div className="auth-header">
           <h1 className="page-title">Welcome, Titan</h1>
           <p className="hero-text compact">
-            Build your personalized Bayesian nutrition and workout plan—styled for the CSUF community.
+            Build your personalized Bayesian nutrition and workout plan, styled for the CSUF community.
           </p>
         </div>
 
