@@ -1,0 +1,501 @@
+"""
+MacroTracker - Flask Backend
+Mike Altamirano
+
+Responsibilities:
+  - REST API design and server-side logic
+  - SQLite database management (users, logs, goals)
+  - Integration with Cesar's Bayesian network
+  - Data processing pipeline (discretization, BMR, macro derivation)
+
+Setup:
+  pip install flask flask-cors pgmpy numpy
+  python app.py
+
+Add to React's package.json:
+  "proxy": "http://localhost:5000"
+"""
+
+import os
+import sys
+import sqlite3
+from datetime import datetime, date
+from contextlib import contextmanager
+
+from flask import Flask, request, jsonify, g
+from flask_cors import CORS
+
+# --- Bayesian model import ---
+# Assumes backend/ lives alongside bayesian_model/ in the project root
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bayesian_model"))
+from bayesian_network import FitnessModel
+
+# ---------------------------------------------------------------------------
+# App setup
+# ---------------------------------------------------------------------------
+
+app = Flask(__name__)
+CORS(app)
+
+DATABASE = os.path.join(os.path.dirname(__file__), "macrotracker.db")
+
+print("Loading Bayesian model...")
+_model = FitnessModel()
+print("Bayesian model ready.")
+
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+
+def get_db():
+    if "db" not in g:
+        g.db = sqlite3.connect(DATABASE, detect_types=sqlite3.PARSE_DECLTYPES)
+        g.db.row_factory = sqlite3.Row
+        g.db.execute("PRAGMA foreign_keys = ON")
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(error):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+
+
+@contextmanager
+def get_db_conn():
+    """Context manager for use outside of a request context (e.g. init)."""
+    conn = sqlite3.connect(DATABASE, detect_types=sqlite3.PARSE_DECLTYPES)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def init_db():
+    """Create all tables if they don't exist."""
+    with get_db_conn() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                email       TEXT    NOT NULL UNIQUE,
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS profiles (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                weight_kg           REAL    NOT NULL,
+                height_cm           REAL    NOT NULL,
+                updated_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS goals (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                goal        TEXT    NOT NULL,
+                set_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS daily_logs (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                log_date            TEXT    NOT NULL DEFAULT (date('now')),
+                sleep_quality       REAL    NOT NULL,
+                calorie_intake      REAL    NOT NULL,
+                protein_intake      REAL    NOT NULL,
+                workout_intensity   REAL    NOT NULL,
+                created_at          TEXT    NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS recommendations (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                log_date            TEXT    NOT NULL DEFAULT (date('now')),
+                workout_label       TEXT    NOT NULL,
+                calories_target     INTEGER NOT NULL,
+                protein_target      INTEGER NOT NULL,
+                carbs_target        INTEGER NOT NULL,
+                fats_target         INTEGER NOT NULL,
+                created_at          TEXT    NOT NULL DEFAULT (datetime('now'))
+            );
+        """)
+    print(f"Database initialised at {DATABASE}")
+
+
+# ---------------------------------------------------------------------------
+# Data processing pipeline
+# ---------------------------------------------------------------------------
+
+def discretize_sleep(value: float) -> int:
+    """1-5 scale  →  0=Poor, 1=Average, 2=Good
+    Matches Cesar's mapping in test_bayesianetwork.py"""
+    v = float(value)
+    if v <= 2:
+        return 0
+    elif v <= 4:
+        return 1
+    return 2
+
+
+def discretize_workout(value: float) -> int:
+    """1-10 scale  →  0=Light, 1=Average, 2=Intense
+    Matches Cesar's mapping in test_bayesianetwork.py"""
+    v = float(value)
+    if v <= 3:
+        return 0
+    elif v <= 7:
+        return 1
+    return 2
+
+
+def discretize_calories(value: float) -> int:
+    """Raw kcal  →  0=Low, 1=Average, 2=High
+    Matches Cesar's mapping in test_bayesianetwork.py"""
+    v = float(value)
+    if v < 1600:
+        return 0
+    elif v <= 2400:
+        return 1
+    return 2
+
+
+def discretize_protein(value: float) -> int:
+    """Raw grams  →  0=Low, 1=Average, 2=High
+    Matches Cesar's mapping in test_bayesianetwork.py"""
+    v = float(value)
+    if v < 50:
+        return 0
+    elif v <= 100:
+        return 1
+    return 2
+
+
+def estimate_bmr(weight_kg: float, height_cm: float) -> float:
+    """Sex-neutral average of Mifflin-St Jeor male/female formulas, age=25."""
+    male   = 10 * weight_kg + 6.25 * height_cm - 5 * 25 + 5
+    female = 10 * weight_kg + 6.25 * height_cm - 5 * 25 - 161
+    return (male + female) / 2
+
+
+# TDEE multipliers per workout recommendation and fitness goal
+_TDEE_MULTIPLIERS = {
+    "Rest":            {"fitness": 1.3,  "maintain-weight": 1.2,  "stay-healthy": 1.2},
+    "Light Workout":   {"fitness": 1.5,  "maintain-weight": 1.4,  "stay-healthy": 1.35},
+    "Intense Workout": {"fitness": 1.7,  "maintain-weight": 1.55, "stay-healthy": 1.5},
+}
+
+# Protein target in g/kg bodyweight per fitness goal
+_PROTEIN_PER_KG = {
+    "fitness":         1.8,
+    "maintain-weight": 1.4,
+    "stay-healthy":    1.2,
+}
+
+
+def compute_macros(bmr: float, weight_kg: float, workout_label: str, goal: str) -> dict:
+    """
+    Derive calorie target and macro split (protein / carbs / fats) from:
+      - BMR estimate
+      - Bayesian workout recommendation
+      - User's fitness goal
+
+    Macro split logic:
+      Calories  = BMR * TDEE multiplier
+      Protein   = goal-driven g/kg (4 kcal/g)
+      Fat       = 25% of total calories (9 kcal/g)
+      Carbs     = remaining calories (4 kcal/g)
+    """
+    goal_key    = goal if goal in _PROTEIN_PER_KG else "stay-healthy"
+    workout_key = workout_label if workout_label in _TDEE_MULTIPLIERS else "Light Workout"
+
+    calories   = round(bmr * _TDEE_MULTIPLIERS[workout_key][goal_key])
+    protein_g  = round(_PROTEIN_PER_KG[goal_key] * weight_kg)
+    fat_g      = round((calories * 0.25) / 9)
+    carb_g     = round(max(calories - (protein_g * 4) - (fat_g * 9), 0) / 4)
+
+    return {
+        "calories": calories,
+        "protein":  protein_g,
+        "carbs":    carb_g,
+        "fats":     fat_g,
+    }
+
+
+def run_pipeline(data: dict) -> dict:
+    """
+    Full data processing pipeline:
+      raw user input → discrete evidence → Bayesian inference → macros
+    Returns the complete recommendation payload sent to the frontend.
+    """
+    weight_kg   = float(data["weight"])
+    height_cm   = float(data["height"])
+    sleep       = float(data["sleepQuality"])
+    calories_in = float(data["dailyCalorieIntake"])
+    protein_in  = float(data["proteinIntake"])
+    workout_raw = float(data["workoutIntensity"])
+    goal        = data.get("goal", "stay-healthy")
+
+    # Step 1: Estimate BMR
+    bmr = estimate_bmr(weight_kg, height_cm)
+
+    # Step 2: Discretize inputs for the Bayesian network
+    evidence = {
+        "SleepQuality":     discretize_sleep(sleep),
+        "WorkoutIntensity": discretize_workout(workout_raw),
+        "ProteinIntake":    discretize_protein(protein_in),
+        "CalorieIntake":    discretize_calories(calories_in),
+    }
+
+    # Step 3: Run Bayesian inference (Cesar's model)
+    workout_label, probs = _model.recommend(evidence)
+
+    # Step 4: Compute macro targets
+    macros = compute_macros(bmr, weight_kg, workout_label, goal)
+
+    return {
+        **macros,
+        "workoutIntensity": workout_label,
+        "probabilities": {
+            "rest":    round(float(probs[0]), 3),
+            "light":   round(float(probs[1]), 3),
+            "intense": round(float(probs[2]), 3),
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Validation helper
+# ---------------------------------------------------------------------------
+
+def validate_fields(data: dict, required: list) -> str | None:
+    """Return an error string if any required field is missing, else None."""
+    missing = [f for f in required if f not in data or str(data[f]).strip() == ""]
+    return f"Missing fields: {', '.join(missing)}" if missing else None
+
+
+# ---------------------------------------------------------------------------
+# API Routes
+# ---------------------------------------------------------------------------
+
+# --- Auth ---
+
+@app.route("/api/auth/register", methods=["POST"])
+def register():
+    """Register a new user by email (no password needed for this project)."""
+    data = request.get_json(force=True)
+    err = validate_fields(data, ["email"])
+    if err:
+        return jsonify({"error": err}), 400
+
+    db = get_db()
+    try:
+        db.execute("INSERT INTO users (email) VALUES (?)", (data["email"],))
+        db.commit()
+        user = db.execute("SELECT * FROM users WHERE email = ?", (data["email"],)).fetchone()
+        return jsonify({"userId": user["id"], "email": user["email"]}), 201
+    except sqlite3.IntegrityError:
+        # User already exists — treat as login
+        user = db.execute("SELECT * FROM users WHERE email = ?", (data["email"],)).fetchone()
+        return jsonify({"userId": user["id"], "email": user["email"]}), 200
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    """Look up a user by email."""
+    data = request.get_json(force=True)
+    err = validate_fields(data, ["email"])
+    if err:
+        return jsonify({"error": err}), 400
+
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE email = ?", (data["email"],)).fetchone()
+    if not user:
+        return jsonify({"error": "User not found. Please register first."}), 404
+    return jsonify({"userId": user["id"], "email": user["email"]}), 200
+
+
+# --- Profile ---
+
+@app.route("/api/profile/<int:user_id>", methods=["GET"])
+def get_profile(user_id):
+    db = get_db()
+    row = db.execute("SELECT * FROM profiles WHERE user_id = ?", (user_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "Profile not found"}), 404
+    return jsonify(dict(row))
+
+
+@app.route("/api/profile/<int:user_id>", methods=["POST", "PUT"])
+def save_profile(user_id):
+    data = request.get_json(force=True)
+    err = validate_fields(data, ["weight", "height"])
+    if err:
+        return jsonify({"error": err}), 400
+
+    db = get_db()
+    db.execute("""
+        INSERT INTO profiles (user_id, weight_kg, height_cm, updated_at)
+        VALUES (?, ?, ?, datetime('now'))
+        ON CONFLICT(user_id) DO UPDATE SET
+            weight_kg  = excluded.weight_kg,
+            height_cm  = excluded.height_cm,
+            updated_at = excluded.updated_at
+    """, (user_id, float(data["weight"]), float(data["height"])))
+    db.commit()
+    return jsonify({"message": "Profile saved"}), 200
+
+
+# --- Goals ---
+
+@app.route("/api/goals/<int:user_id>", methods=["POST", "PUT"])
+def save_goal(user_id):
+    data = request.get_json(force=True)
+    err = validate_fields(data, ["goal"])
+    if err:
+        return jsonify({"error": err}), 400
+
+    db = get_db()
+    db.execute("""
+        INSERT INTO goals (user_id, goal, set_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(user_id) DO UPDATE SET
+            goal   = excluded.goal,
+            set_at = excluded.set_at
+    """, (user_id, data["goal"]))
+    db.commit()
+    return jsonify({"message": "Goal saved"}), 200
+
+
+# --- Daily log ---
+
+@app.route("/api/log/<int:user_id>", methods=["POST"])
+def save_daily_log(user_id):
+    """Save today's lifestyle inputs."""
+    data = request.get_json(force=True)
+    err = validate_fields(data, [
+        "sleepQuality", "dailyCalorieIntake", "proteinIntake", "workoutIntensity"
+    ])
+    if err:
+        return jsonify({"error": err}), 400
+
+    db = get_db()
+    db.execute("""
+        INSERT INTO daily_logs
+            (user_id, log_date, sleep_quality, calorie_intake, protein_intake, workout_intensity)
+        VALUES (?, date('now'), ?, ?, ?, ?)
+    """, (
+        user_id,
+        float(data["sleepQuality"]),
+        float(data["dailyCalorieIntake"]),
+        float(data["proteinIntake"]),
+        float(data["workoutIntensity"]),
+    ))
+    db.commit()
+    return jsonify({"message": "Log saved"}), 201
+
+
+@app.route("/api/log/<int:user_id>", methods=["GET"])
+def get_logs(user_id):
+    """Return the last 30 days of logs for progress tracking."""
+    db = get_db()
+    rows = db.execute("""
+        SELECT * FROM daily_logs
+        WHERE user_id = ?
+        ORDER BY log_date DESC
+        LIMIT 30
+    """, (user_id,)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+# --- Recommendation (main pipeline) ---
+
+@app.route("/api/recommendation", methods=["POST"])
+def recommendation():
+    """
+    Main endpoint called by the React frontend (GoalsPage / InputPage).
+
+    Expected JSON payload:
+      weight, height, sleepQuality, dailyCalorieIntake,
+      proteinIntake, workoutIntensity, goal
+      userId (optional — if provided, result is persisted to DB)
+    """
+    data = request.get_json(force=True)
+    required = [
+        "weight", "height", "sleepQuality",
+        "dailyCalorieIntake", "proteinIntake", "workoutIntensity",
+    ]
+    err = validate_fields(data, required)
+    if err:
+        return jsonify({"error": err}), 400
+
+    try:
+        result = run_pipeline(data)
+    except Exception as e:
+        return jsonify({"error": f"Inference failed: {str(e)}"}), 500
+
+    # Persist recommendation if a userId was sent
+    user_id = data.get("userId")
+    if user_id:
+        try:
+            db = get_db()
+            db.execute("""
+                INSERT INTO recommendations
+                    (user_id, workout_label, calories_target, protein_target,
+                     carbs_target, fats_target)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                int(user_id),
+                result["workoutIntensity"],
+                result["calories"],
+                result["protein"],
+                result["carbs"],
+                result["fats"],
+            ))
+            db.commit()
+        except Exception:
+            pass  # Don't fail the request just because logging failed
+
+    return jsonify(result), 200
+
+
+# --- Recommendation history ---
+
+@app.route("/api/recommendation/<int:user_id>/history", methods=["GET"])
+def recommendation_history(user_id):
+    """Return the last 30 recommendations for a user (progress tracking)."""
+    db = get_db()
+    rows = db.execute("""
+        SELECT * FROM recommendations
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 30
+    """, (user_id,)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+# ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok", "model": "loaded"}), 200
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    init_db()
+    app.run(debug=True, port=5000)
