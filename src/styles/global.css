@@ -90,6 +90,10 @@ body {
   font-weight: 600;
   padding: 0.45rem 0.7rem;
   border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .nav-link:hover,
@@ -141,6 +145,10 @@ body {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .btn-primary {
@@ -382,6 +390,10 @@ body {
   font-weight: 600;
   cursor: pointer;
   color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .toggle-btn.active {
@@ -410,6 +422,10 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .goal-option.active {
