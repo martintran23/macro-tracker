@@ -183,6 +183,130 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.dashboard-page .card-bayesian-probabilities {
+  grid-column: 1 / -1;
+}
+
+.dashboard-page .card-model-explainer {
+  grid-column: 1 / -1;
+}
+
+.dashboard-page .card-model-explainer .hero-text {
+  max-width: none;
+  margin-bottom: 0;
+}
+
+.bayesian-pie-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.75rem;
+}
+
+.bayesian-pie-disk {
+  width: min(220px, 72vw);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.bayesian-pie-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.bayesian-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 12rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.bayesian-pie-legend-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.bayesian-pie-swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.bayesian-pie-legend-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.bayesian-pie-legend-pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--titan-blue-mid);
+}
+
+.bayesian-pie-explain {
+  flex: 1 1 100%;
+  margin: 0;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(197, 212, 232, 0.9);
+  max-width: 52rem;
+}
+
+.bayesian-pie-explain p {
+  margin: 0 0 0.65rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.bayesian-pie-explain p:last-child {
+  margin-bottom: 0;
+}
+
+.bayesian-pie-glossary {
+  margin: 0 0 0.85rem;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.bayesian-pie-glossary li {
+  margin-bottom: 0.35rem;
+}
+
+.bayesian-pie-glossary li:last-child {
+  margin-bottom: 0;
+}
+
+.bayesian-pie-glossary strong {
+  color: var(--titan-blue-mid);
+}
+
+.bayesian-pie-takeaway {
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: var(--titan-blue-light);
+  border: 1px solid rgba(197, 212, 232, 0.8);
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.bayesian-pie-takeaway strong {
+  color: var(--titan-blue);
+}
+
 .metric-value {
   margin: 0;
   font-size: 1.3rem;

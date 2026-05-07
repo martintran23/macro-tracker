@@ -304,7 +304,7 @@ def register():
         user = db.execute("SELECT * FROM users WHERE email = ?", (data["email"],)).fetchone()
         return jsonify({"userId": user["id"], "email": user["email"]}), 201
     except sqlite3.IntegrityError:
-        # User already exists — treat as login
+        # User already exists - treat as login
         user = db.execute("SELECT * FROM users WHERE email = ?", (data["email"],)).fetchone()
         return jsonify({"userId": user["id"], "email": user["email"]}), 200
 
@@ -427,7 +427,7 @@ def recommendation():
     Expected JSON payload:
       weight, height, sleepQuality, dailyCalorieIntake,
       proteinIntake, workoutIntensity, goal
-      userId (optional — if provided, result is persisted to DB)
+      userId (optional - if provided, result is persisted to DB)
     """
     data = request.get_json(force=True)
     required = [

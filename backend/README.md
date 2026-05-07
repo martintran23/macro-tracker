@@ -1,4 +1,4 @@
-# MacroTracker — Backend
+# MacroTracker - Backend
 
 **Mike Altamirano** | Backend development, API design, database management, Bayesian integration
 
@@ -66,7 +66,7 @@ SQLite file `macrotracker.db` is created automatically on first run.
 ### Profile
 | Method | Endpoint | Body | Description |
 |---|---|---|---|
-| GET | `/api/profile/:userId` | — | Fetch saved profile |
+| GET | `/api/profile/:userId` | - | Fetch saved profile |
 | POST | `/api/profile/:userId` | `{ weight, height }` | Save / update profile |
 
 ### Goals
@@ -78,13 +78,13 @@ SQLite file `macrotracker.db` is created automatically on first run.
 | Method | Endpoint | Body | Description |
 |---|---|---|---|
 | POST | `/api/log/:userId` | `{ sleepQuality, dailyCalorieIntake, proteinIntake, workoutIntensity }` | Save today's inputs |
-| GET | `/api/log/:userId` | — | Last 30 days of logs |
+| GET | `/api/log/:userId` | - | Last 30 days of logs |
 
 ### Recommendation (main pipeline)
 | Method | Endpoint | Body | Description |
 |---|---|---|---|
 | POST | `/api/recommendation` | See below | Run full pipeline, return macros |
-| GET | `/api/recommendation/:userId/history` | — | Last 30 recommendations |
+| GET | `/api/recommendation/:userId/history` | - | Last 30 recommendations |
 
 **POST `/api/recommendation` payload:**
 ```json

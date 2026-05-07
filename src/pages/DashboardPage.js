@@ -1,4 +1,5 @@
 import Card from "../components/Card";
+import BayesianPieChart from "../components/BayesianPieChart";
 
 const goalLabels = {
   fitness: "Improve Fitness",
@@ -6,7 +7,16 @@ const goalLabels = {
   "stay-healthy": "Stay Healthy",
 };
 
+function formatMetric(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : "-";
+}
+
 function DashboardPage({ recommendation, fitnessGoal, email }) {
+  const p = recommendation.probabilities;
+  const showProbabilities =
+    p && typeof p === "object" && "rest" in p && "light" in p && "intense" in p;
+
   return (
     <div className="page dashboard-page">
       <h1 className="page-title">Your Daily Recommendations</h1>
@@ -16,43 +26,33 @@ function DashboardPage({ recommendation, fitnessGoal, email }) {
       </p>
       <div className="card-grid">
         <Card title="Calorie Target">
-          <p className="metric-value">{recommendation.calories} kcal</p>
+          <p className="metric-value">{formatMetric(recommendation.calories)} kcal</p>
         </Card>
         <Card title="Protein">
-          <p className="metric-value">{recommendation.protein} g</p>
+          <p className="metric-value">{formatMetric(recommendation.protein)} g</p>
         </Card>
         <Card title="Carbs">
-          <p className="metric-value">{recommendation.carbs} g</p>
+          <p className="metric-value">{formatMetric(recommendation.carbs)} g</p>
         </Card>
         <Card title="Fats">
-          <p className="metric-value">{recommendation.fats} g</p>
+          <p className="metric-value">{formatMetric(recommendation.fats)} g</p>
         </Card>
         <Card title="Workout Intensity">
-          <p className="metric-value">{recommendation.workoutIntensity}</p>
+          <p className="metric-value">{recommendation.workoutIntensity || "-"}</p>
         </Card>
-        {recommendation.probabilities ? (
-          <Card title="Bayesian workout probabilities">
-            <ul className="hero-text compact" style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              <li>
-                Rest: {(recommendation.probabilities.rest * 100).toFixed(1)}%
-              </li>
-              <li>
-                Light: {(recommendation.probabilities.light * 100).toFixed(1)}%
-              </li>
-              <li>
-                Intense: {(recommendation.probabilities.intense * 100).toFixed(1)}%
-              </li>
-            </ul>
+        {showProbabilities ? (
+          <Card title="Bayesian workout probabilities" className="card-bayesian-probabilities">
+            <BayesianPieChart probabilities={p} />
           </Card>
         ) : null}
+        <Card title="How Recommendations Are Modeled" className="card-model-explainer">
+          <p className="hero-text compact">
+            The Bayesian network combines observed inputs (sleep, calories, protein, weight, height,
+            and workout intensity) with hidden states such as recovery, fatigue, and metabolism to
+            estimate your current fitness state and balance progress with burnout prevention.
+          </p>
+        </Card>
       </div>
-      <Card title="How Recommendations Are Modeled">
-        <p className="hero-text compact">
-          The Bayesian network combines observed inputs (sleep, calories, protein, weight, height,
-          and workout intensity) with hidden states such as recovery, fatigue, and metabolism to
-          estimate your current fitness state and balance progress with burnout prevention.
-        </p>
-      </Card>
     </div>
   );
 }

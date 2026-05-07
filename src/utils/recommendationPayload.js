@@ -26,13 +26,18 @@ export function buildRecommendationPayload(userProfile, fitnessGoal, userId) {
 }
 
 export function mapRecommendationToState(data) {
+  const toNum = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : v;
+  };
+
   return {
-    calories: data.calories,
-    protein: data.protein,
-    carbs: data.carbs,
-    fats: data.fats,
+    calories: toNum(data.calories),
+    protein: toNum(data.protein),
+    carbs: toNum(data.carbs),
+    fats: toNum(data.fats),
     workoutIntensity: data.workoutIntensity,
     probabilities: data.probabilities ?? null,
-    _meta: data._meta,
+    ...(data._meta !== undefined ? { _meta: data._meta } : {}),
   };
 }
