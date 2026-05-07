@@ -363,6 +363,11 @@ body {
   margin: 1.5rem auto 0;
 }
 
+.profile-setup-page .card {
+  max-width: 480px;
+  margin-inline: auto;
+}
+
 .auth-header {
   margin-bottom: 0.8rem;
 }
