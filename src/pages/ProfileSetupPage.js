@@ -1,10 +1,19 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getApiErrorMessage } from "../utils/apiErrors";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
 
-function ProfileSetupPage({ userProfile, setUserProfile, nextPath = "/setup/goals" }) {
+function ProfileSetupPage({
+  userProfile,
+  setUserProfile,
+  nextPath = "/setup/goals",
+  beforeNavigate,
+}) {
   const navigate = useNavigate();
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -14,9 +23,20 @@ function ProfileSetupPage({ userProfile, setUserProfile, nextPath = "/setup/goal
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    navigate(nextPath);
+    setErrorMessage("");
+    setIsSubmitting(true);
+    try {
+      if (beforeNavigate) {
+        await beforeNavigate();
+      }
+      navigate(nextPath);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "Unable to save. Please try again."));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -82,7 +102,10 @@ function ProfileSetupPage({ userProfile, setUserProfile, nextPath = "/setup/goal
             step="1"
             placeholder="e.g. 7"
           />
-          <Button type="submit">Continue to Goals</Button>
+          {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Continue to Goals"}
+          </Button>
         </form>
       </Card>
     </div>

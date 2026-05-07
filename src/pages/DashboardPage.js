@@ -30,6 +30,21 @@ function DashboardPage({ recommendation, fitnessGoal, email }) {
         <Card title="Workout Intensity">
           <p className="metric-value">{recommendation.workoutIntensity}</p>
         </Card>
+        {recommendation.probabilities ? (
+          <Card title="Bayesian workout probabilities">
+            <ul className="hero-text compact" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <li>
+                Rest: {(recommendation.probabilities.rest * 100).toFixed(1)}%
+              </li>
+              <li>
+                Light: {(recommendation.probabilities.light * 100).toFixed(1)}%
+              </li>
+              <li>
+                Intense: {(recommendation.probabilities.intense * 100).toFixed(1)}%
+              </li>
+            </ul>
+          </Card>
+        ) : null}
       </div>
       <Card title="How Recommendations Are Modeled">
         <p className="hero-text compact">

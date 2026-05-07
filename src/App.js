@@ -12,6 +12,7 @@ function App() {
   const [setupComplete, setSetupComplete] = useState(false);
   const [userAccount, setUserAccount] = useState({
     email: "",
+    userId: null,
   });
   const [userProfile, setUserProfile] = useState({
     weight: "",
@@ -29,6 +30,7 @@ function App() {
     carbs: 240,
     fats: 70,
     workoutIntensity: "Moderate",
+    probabilities: null,
   });
 
   return (
@@ -40,6 +42,23 @@ function App() {
           setIsAuthenticated(false);
           setSetupComplete(false);
           setFitnessGoal("");
+          setUserAccount({ email: "", userId: null });
+          setRecommendation({
+            calories: 2200,
+            protein: 150,
+            carbs: 240,
+            fats: 70,
+            workoutIntensity: "Moderate",
+            probabilities: null,
+          });
+          setUserProfile({
+            weight: "",
+            height: "",
+            sleepQuality: "",
+            dailyCalorieIntake: "",
+            proteinIntake: "",
+            workoutIntensity: "",
+          });
         }}
       />
       <main className="page-container">
@@ -73,6 +92,7 @@ function App() {
             element={
               isAuthenticated ? (
                 <GoalsPage
+                  userId={userAccount.userId}
                   userProfile={userProfile}
                   fitnessGoal={fitnessGoal}
                   setFitnessGoal={setFitnessGoal}
@@ -102,7 +122,13 @@ function App() {
             path="/profile"
             element={
               isAuthenticated && setupComplete ? (
-                <ProfilePage userProfile={userProfile} setUserProfile={setUserProfile} />
+                <ProfilePage
+                  userId={userAccount.userId}
+                  userProfile={userProfile}
+                  setUserProfile={setUserProfile}
+                  fitnessGoal={fitnessGoal}
+                  setRecommendation={setRecommendation}
+                />
               ) : (
                 <Navigate to="/" replace />
               )

@@ -3,14 +3,34 @@ import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
 
+import { loginUser, registerUser } from "../services/userApi";
+import { getApiErrorMessage } from "../utils/apiErrors";
+
 function AuthPage({ setIsAuthenticated, setUserAccount }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    setUserAccount({ email });
-    setIsAuthenticated(true);
+    setErrorMessage("");
+    setIsSubmitting(true);
+    try {
+      const trimmed = email.trim();
+      if (!trimmed) {
+        setErrorMessage("Please enter your email.");
+        return;
+      }
+      const result =
+        mode === "signup" ? await registerUser(trimmed) : await loginUser(trimmed);
+      setUserAccount({ email: result.email, userId: result.userId });
+      setIsAuthenticated(true);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -49,7 +69,10 @@ function AuthPage({ setIsAuthenticated, setUserAccount }) {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
           />
-          <Button type="submit">{mode === "login" ? "Continue" : "Create Account"}</Button>
+          {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Please wait..." : mode === "login" ? "Continue" : "Create Account"}
+          </Button>
         </form>
       </Card>
     </div>

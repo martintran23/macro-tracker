@@ -1,26 +1,31 @@
-import axios from "axios";
+import { apiClient } from "./apiClient";
+import { mapRecommendationToState } from "../utils/recommendationPayload";
 
-const apiClient = axios.create({
-  baseURL: "/api",
-  timeout: 7000,
-});
+function mockRecommendation() {
+  return mapRecommendationToState({
+    calories: 2300,
+    protein: 165,
+    carbs: 240,
+    fats: 70,
+    workoutIntensity: "Moderate",
+    probabilities: null,
+    _meta: { mocked: true },
+  });
+}
 
 export async function fetchRecommendation(payload) {
+  if (process.env.REACT_APP_USE_MOCK_API === "true") {
+    return mockRecommendation();
+  }
+
   try {
-    const response = await apiClient.post("/recommendation", payload);
-    return response.data;
+    const { data } = await apiClient.post("/recommendation", payload);
+    return mapRecommendationToState(data);
   } catch (error) {
-    // Fallback mock response for local/frontend-only development.
-    return {
-      calories: 2300,
-      protein: 165,
-      carbs: 240,
-      fats: 70,
-      workoutIntensity: "Moderate",
-      _meta: {
-        mocked: true,
-        message: error?.message || "Using mock data.",
-      },
-    };
+    const message =
+      error.response?.data?.error ||
+      error.message ||
+      "Unable to reach recommendation service.";
+    throw new Error(message);
   }
 }

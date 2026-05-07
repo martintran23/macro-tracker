@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import { fetchRecommendation } from "../services/recommendationService";
+import { saveDailyLog, saveGoal, saveProfile } from "../services/userApi";
+import { buildRecommendationPayload } from "../utils/recommendationPayload";
+import { getApiErrorMessage } from "../utils/apiErrors";
 
 const goals = [
   { id: "fitness", label: "Improve Fitness" },
@@ -11,6 +14,7 @@ const goals = [
 ];
 
 function GoalsPage({
+  userId,
   userProfile,
   fitnessGoal,
   setFitnessGoal,
@@ -27,27 +31,34 @@ function GoalsPage({
       setErrorMessage("Please select a goal to continue.");
       return;
     }
+    if (userId == null) {
+      setErrorMessage("Session expired. Please sign in again.");
+      return;
+    }
 
     setErrorMessage("");
     setIsSubmitting(true);
 
     try {
-      const response = await fetchRecommendation({
-        ...userProfile,
-        goal: fitnessGoal,
+      await saveProfile(userId, {
+        weight: userProfile.weight,
+        height: userProfile.height,
       });
+      await saveGoal(userId, fitnessGoal);
+      await saveDailyLog(userId, userProfile);
 
-      setRecommendation({
-        calories: response.calories,
-        protein: response.protein,
-        carbs: response.carbs,
-        fats: response.fats,
-        workoutIntensity: response.workoutIntensity,
-      });
+      const payload = buildRecommendationPayload(userProfile, fitnessGoal, userId);
+      const response = await fetchRecommendation(payload);
+      setRecommendation(response);
       setSetupComplete(true);
       navigate("/dashboard");
     } catch (error) {
-      setErrorMessage("Unable to generate recommendations. Please try again.");
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          "Unable to generate recommendations. Is the backend running on port 5000?",
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
