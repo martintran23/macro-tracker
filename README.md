@@ -40,6 +40,39 @@ macro-tracker/
 
 ---
 
+**Martin Tran** | Frontend development: React app in `src/`, including the auth page, dashboard, goals page, homepage, daily input and related pages, and shared UI components.
+
+---
+### src (frontend)
+
+```
+src/
+├── App.js                      ← App shell, routing, and shared state
+├── index.js                    ← React DOM entry point
+├── components/
+│   ├── BayesianPieChart.js     ← Pie chart for rest / light / intense workout odds
+│   ├── Button.js               ← Reusable styled button
+│   ├── Card.js                 ← Reusable card layout wrapper
+│   ├── InputField.js           ← Labeled form input
+│   └── Navbar.js               ← Top navigation and sign-out
+├── pages/
+│   ├── AuthPage.js             ← Login and registration by email
+│   ├── DashboardPage.js        ← Daily macros, workout tip, and probability chart
+│   ├── GoalsPage.js            ← Fitness goal selection and save to API
+│   ├── HomePage.js             ← Landing page and get-started CTA
+│   ├── InputPage.js            ← Daily lifestyle inputs (sleep, calories, protein, workout)
+│   ├── ProfilePage.js          ← Edit profile and refresh recommendations
+│   └── ProfileSetupPage.js     ← Initial weight and height setup
+├── services/
+│   ├── apiClient.js            ← Axios client for Flask `/api` routes
+│   ├── recommendationService.js ← Fetch macro and workout recommendations
+│   └── userApi.js              ← Auth, profile, goals, and daily log API calls
+└── styles/
+    └── global.css              ← Global layout, typography, and theme styles
+```
+
+---
+
 ### Setup
 
 ```bash
