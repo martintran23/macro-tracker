@@ -43,6 +43,13 @@ macro-tracker/
 **Martin Tran** | Frontend development: React app in `src/`, including the auth page, dashboard, goals page, homepage, daily input and related pages, and shared UI components.
 
 ---
+### Frontend Setup
+
+```bash
+npm install
+npm start
+```
+
 ### src (frontend)
 
 ```
@@ -73,12 +80,12 @@ src/
 
 ---
 
-### Setup
+### Backend Setup
 
 ```bash
 cd backend
 pip install -r requirements.txt
-python app.py
+python app (OR python app.py)
 ```
 
 The server starts on **http://localhost:5000**.
