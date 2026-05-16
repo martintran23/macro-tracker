@@ -85,7 +85,7 @@ src/
 ```bash
 cd backend
 pip install -r requirements.txt
-python app (OR python app.py)
+python app # OR python app.py
 ```
 
 The server starts on **http://localhost:5000**.
