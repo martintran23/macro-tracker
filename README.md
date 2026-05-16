@@ -6,6 +6,8 @@ Based on this probabilistic inference, MacroTracker generates tailored daily cal
 
 ## Files/Folders
 
+---
+
 **Cesar Carrillo** | Bayesian network model
 
 ---
@@ -16,7 +18,7 @@ bayesian_network.py - Defines Bayesian Network Model for fitness recommendations
 test_bayesianetwork.py - Tests the model by creating sample user data and converting it into the model's expected format. Then it prints the recommendations.
 
 
-### MacroTracker - Backend
+---
 
 **Mike Altamirano** | Backend development, API design, database management, Bayesian integration
 
